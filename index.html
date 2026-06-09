@@ -89,6 +89,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
   <div id="bar">
     <span>⏱ <b id="timer">00:00</b></span>
     <span>👆 <b id="moves">0</b>步</span>
+    <span id="debug-info" style="font-size:.7em;color:#ff0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <button class="bar-btn" id="hint-btn">👁 原图</button>
     <button class="bar-btn" id="restart-btn">🔄 重新打乱</button>
     <button class="bar-btn" id="home-btn">🏠</button>
@@ -280,10 +281,8 @@ function render() {
   // DEBUG: 图片信息
   const iw = image ? image.naturalWidth : 0;
   const ih = image ? image.naturalHeight : 0;
-  ctx.fillStyle = '#ff0';
-  ctx.font = '11px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`图:${iw}x${ih} 格:${gridN}x${gridN} 源格:${(iw/gridN)|0}px 板:${(boardSize)|0}px 格显:${(cellSize)|0}px`, 4, canvasH-6);
+  const dbi = $('#debug-info');
+  if (dbi) dbi.textContent = `图${iw}x${ih} 源${(iw/gridN)|0}px 板${(boardSize)|0}`;
 }
 
 function roundRect(x, y, w, h, r) {

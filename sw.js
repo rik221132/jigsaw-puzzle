@@ -1,4 +1,4 @@
-const CACHE = 'jigsaw-puzzle-v1';
+const CACHE = 'jigsaw-puzzle-v2';
 const ASSETS = [
   '.',
   'index.html',
