@@ -59,7 +59,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
 <body>
 
 <div id="start">
-  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v7</span></h1>
+  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v8</span></h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
@@ -139,7 +139,14 @@ installBtn.addEventListener('click', async () => {
 $('#install-close').addEventListener('click', () => { installBar.style.display = 'none'; });
 window.addEventListener('appinstalled', () => { installBar.style.display = 'none'; });
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  window.addEventListener('load', () => {
+    // 先干掉旧 SW，再注册新的
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).then(() => {
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    });
+  });
 }
 
 // ========== 游戏状态 ==========
