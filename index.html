@@ -307,38 +307,21 @@ function hitTest(mx, my) {
   return -1;
 }
 
-// ========== 触摸 / 鼠标事件（绑在 canvas-wrap 上保证接收） ==========
-const wrap = $('#canvas-wrap');
-let lastTouch = null;
-
+// ========== 指针事件（pointer events — 同时支持触摸和鼠标） ==========
 function getEventPos(e) {
   const rect = canvas.getBoundingClientRect();
-  if (e.touches && e.touches.length > 0) {
-    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-  }
-  if (e.changedTouches && e.changedTouches.length > 0) {
-    return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
-  }
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
-wrap.addEventListener('touchstart', onDown, { passive: false });
-wrap.addEventListener('mousedown', onDown);
-wrap.addEventListener('touchmove', onMove, { passive: false });
-wrap.addEventListener('mousemove', onMove);
-wrap.addEventListener('touchend', onUp);
-wrap.addEventListener('mouseup', onUp);
-wrap.addEventListener('touchcancel', onUp);
-wrap.addEventListener('mouseleave', onUp);
-
-// 全局阻止意外滚动（game 区域）
-document.addEventListener('touchmove', function(e) {
-  if (gameScr.style.display !== 'none' && dragIdx >= 0) e.preventDefault();
-}, { passive: false });
+canvas.addEventListener('pointerdown', onDown);
+canvas.addEventListener('pointermove', onMove);
+canvas.addEventListener('pointerup', onUp);
+canvas.addEventListener('pointercancel', onUp);
+canvas.addEventListener('pointerleave', onUp);
 
 function onDown(e) {
   if (!pieces.length) return;
-  e.preventDefault(); // 彻底阻止浏览器手势
+  canvas.setPointerCapture(e.pointerId);
   const pos = getEventPos(e);
   const idx = hitTest(pos.x, pos.y);
   if (idx >= 0) {
@@ -365,12 +348,12 @@ function onMove(e) {
 
 function onUp(e) {
   if (dragIdx < 0) return;
+  canvas.releasePointerCapture(e.pointerId);
   const p = pieces[dragIdx];
   const dx = p.x - p.tx, dy = p.y - p.ty;
   const snapDist = cellSize * 0.30;
   if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
-    p.x = p.tx;
-    p.y = p.ty;
+    p.x = p.tx; p.y = p.ty;
     p.locked = true;
     moves++;
     movesEl.textContent = moves;
