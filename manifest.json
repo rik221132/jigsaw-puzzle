@@ -2,7 +2,7 @@
   "name": "拼图游戏",
   "short_name": "拼图",
   "description": "上传照片，拖拽拼图，享受拼图乐趣",
-  "start_url": ".",
+  "start_url": "/jigsaw-puzzle/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a1a2e",
