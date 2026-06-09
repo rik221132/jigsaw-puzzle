@@ -10,72 +10,70 @@
 <title>拼图游戏</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;touch-action:none;
+html,body{height:100%;overflow:hidden;touch-action:manipulation;
   font-family:-apple-system,system-ui,sans-serif;
   background:#1a1a2e;color:#e0e0e0;
   user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent}
-/* ---- 开始页 ---- */
+/* 开始页 */
 #start{padding:40px 20px;text-align:center;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px}
 #start h1{font-size:2.2em;background:linear-gradient(135deg,#7B8AE0,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 #upload-wrap{position:relative}
 #upload-wrap input[type=file]{opacity:0;position:absolute;inset:0;cursor:pointer}
-#upload-btn{display:inline-block;padding:14px 36px;background:#5B6ABF;border-radius:30px;font-size:1.1em;font-weight:600;color:#fff;transition:transform .15s}
+#upload-btn{display:inline-block;padding:14px 36px;background:#5B6ABF;border-radius:30px;font-size:1.1em;font-weight:600;color:#fff}
 #upload-btn:active{transform:scale(.95)}
 #preview-thumb{width:120px;height:120px;border-radius:16px;object-fit:cover;border:3px solid #5B6ABF;display:none}
 #diff-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-.diff-btn{padding:10px 20px;border:2px solid #444;border-radius:24px;background:transparent;color:#ccc;font-size:1em;cursor:pointer;transition:all .2s}
+.diff-btn{padding:10px 20px;border:2px solid #444;border-radius:24px;background:transparent;color:#ccc;font-size:1em;cursor:pointer}
 .diff-btn.selected{border-color:#7B8AE0;background:rgba(123,138,224,.2);color:#fff}
-#start-btn{padding:14px 48px;background:#C084FC;border:none;border-radius:30px;font-size:1.2em;font-weight:700;color:#fff;cursor:pointer;transition:transform .15s,opacity .2s}
+#start-btn{padding:14px 48px;background:#C084FC;border:none;border-radius:30px;font-size:1.2em;font-weight:700;color:#fff;cursor:pointer}
 #start-btn:disabled{opacity:.35;pointer-events:none}
 #start-btn:active{transform:scale(.95)}
-/* ---- 游戏页 ---- */
+/* 游戏页 */
 #game{display:none;height:100%;flex-direction:column}
-#bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#16213e;gap:4px;flex-shrink:0}
+#bar{display:flex;justify-content:center;align-items:center;padding:8px 14px;background:#16213e;gap:12px;flex-shrink:0}
 #bar span{font-size:.85em;white-space:nowrap}
 .bar-btn{background:rgba(123,138,224,.25);border:none;color:#ccc;padding:6px 12px;border-radius:16px;font-size:.82em;cursor:pointer}
 .bar-btn:active{background:rgba(123,138,224,.5)}
-#canvas-wrap{flex:1;display:flex;justify-content:center;align-items:center;overflow:hidden}
-canvas{display:block;touch-action:none;outline:2px solid #0f0;min-width:200px;min-height:200px}
-/* ---- 安装提示条 ---- */
-#install-bar{position:fixed;bottom:0;left:0;right:0;background:#16213e;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:30;border-top:1px solid rgba(123,138,224,.4);font-size:.88em}
-#install-btn{background:#5B6ABF;border:none;color:#fff;padding:8px 18px;border-radius:20px;font-weight:600;cursor:pointer;white-space:nowrap}
-#install-close{background:none;border:none;color:#888;font-size:1.2em;cursor:pointer;padding:4px 8px}
-/* ---- 原图浮层 ---- */
+#canvas-wrap{flex:1;display:flex;justify-content:center;align-items:center;padding:10px}
+canvas{display:block;touch-action:manipulation;border-radius:8px}
+/* 原图浮层 */
 #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;justify-content:center;align-items:center}
-#overlay img{max-width:90vw;max-height:80vh;border-radius:12px;border:2px solid #5B6ABF}
-/* ---- 胜利浮层 ---- */
+#overlay img{max-width:90vw;max-height:80vh;border-radius:12px}
+/* 胜利浮层 */
 #win{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:20;flex-direction:column;justify-content:center;align-items:center;gap:16px}
 #win h2{font-size:2.8em}
 #win p{font-size:1.15em;color:#aaa}
 #win button{padding:12px 40px;background:#C084FC;border:none;border-radius:30px;font-size:1.15em;font-weight:700;color:#fff;cursor:pointer}
+/* 安装条 */
+#install-bar{position:fixed;bottom:0;left:0;right:0;background:#16213e;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:30;border-top:1px solid rgba(123,138,224,.4);font-size:.88em}
+#install-btn{background:#5B6ABF;border:none;color:#fff;padding:8px 18px;border-radius:20px;font-weight:600;cursor:pointer}
+#install-close{background:none;border:none;color:#888;font-size:1.2em;cursor:pointer;padding:4px 8px}
 </style>
 </head>
 <body>
 
-<!-- 开始页 -->
 <div id="start">
-  <h1>🧩 拼图游戏</h1>
+  <h1>🧩 滑动拼图</h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
   </div>
   <img id="preview-thumb" alt="预览">
   <div id="diff-row">
-    <button class="diff-btn" data-n="3">3×3 简单</button>
-    <button class="diff-btn selected" data-n="4">4×4 中等</button>
+    <button class="diff-btn selected" data-n="3">3×3 简单</button>
+    <button class="diff-btn" data-n="4">4×4 中等</button>
     <button class="diff-btn" data-n="5">5×5 困难</button>
   </div>
-  <button id="start-btn" disabled>开始拼图</button>
+  <button id="start-btn" disabled>开始游戏</button>
 </div>
 
-<!-- 游戏页 -->
 <div id="game">
   <div id="bar">
     <span>⏱ <b id="timer">00:00</b></span>
     <span>👆 <b id="moves">0</b>步</span>
     <button class="bar-btn" id="hint-btn">👁 原图</button>
-    <button class="bar-btn" id="restart-btn">🔄 重来</button>
+    <button class="bar-btn" id="restart-btn">🔄 重新打乱</button>
     <button class="bar-btn" id="home-btn">🏠</button>
   </div>
   <div id="canvas-wrap">
@@ -83,7 +81,14 @@ canvas{display:block;touch-action:none;outline:2px solid #0f0;min-width:200px;mi
   </div>
 </div>
 
-<!-- 安装提示 -->
+<div id="overlay"><img id="overlay-img" alt="原图"></div>
+
+<div id="win">
+  <h2>🎉 完成!</h2>
+  <p>⏱ <span id="win-time"></span> · 👆 <span id="win-moves"></span>步</p>
+  <button id="win-btn">再来一局</button>
+</div>
+
 <div id="install-bar" style="display:none">
   <span>📲 添加到桌面，像 App 一样用</span>
   <button id="install-btn">安装</button>
@@ -94,130 +99,99 @@ canvas{display:block;touch-action:none;outline:2px solid #0f0;min-width:200px;mi
 // ========== DOM ==========
 const $ = s => document.querySelector(s);
 const startScr = $('#start'), gameScr = $('#game');
-const fileInp = $('#file-input'), previewThumb = $('#preview-thumb');
-const startBtn = $('#start-btn');
+const fileInp = $('#file-input'), previewThumb = $('#preview-thumb'), startBtn = $('#start-btn');
 const canvas = $('#c'), ctx = canvas.getContext('2d');
 const timerEl = $('#timer'), movesEl = $('#moves');
 const overlay = $('#overlay'), overlayImg = $('#overlay-img');
 const winScr = $('#win'), winTime = $('#win-time'), winMoves = $('#win-moves');
 const installBar = $('#install-bar'), installBtn = $('#install-btn');
-let deferredPrompt = null;
 
 // ========== PWA 安装 ==========
+let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBar.style.display = 'flex';
+  e.preventDefault(); deferredPrompt = e; installBar.style.display = 'flex';
 });
 installBtn.addEventListener('click', async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
-  const result = await deferredPrompt.userChoice;
-  if (result.outcome === 'accepted') installBar.style.display = 'none';
+  if ((await deferredPrompt.userChoice).outcome === 'accepted') installBar.style.display = 'none';
   deferredPrompt = null;
 });
 $('#install-close').addEventListener('click', () => { installBar.style.display = 'none'; });
 window.addEventListener('appinstalled', () => { installBar.style.display = 'none'; });
-
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
-</script>
 
-<!-- 原图浮层 -->
-<div id="overlay"><img id="overlay-img" alt="原图"></div>
-
-<!-- 胜利浮层 -->
-<div id="win">
-  <h2>🎉 完成!</h2>
-  <p>⏱ <span id="win-time"></span> &nbsp; 👆 <span id="win-moves"></span>步</p>
-  <button id="win-btn">再来一局</button>
-</div>
-
-<script>
-// ========== 状态 ==========
-let image = null;           // HTMLImageElement 原图
-let gridN = 4;              // N×N
-let pieces = [];            // [{row,col,x,y,tx,ty,locked}]  tx,ty = 目标坐标
+// ========== 游戏状态 ==========
+let image = null, gridN = 3;
+let pieces = [];        // [{id, correctR, correctC, curR, curC}]
+let emptyR, emptyC;     // 空位位置
 let boardX=0, boardY=0, cellSize=0, boardSize=0;
-let dragIdx = -1;           // 正在拖的碎片索引
-let dragOffX=0, dragOffY=0; // 手指相对碎片左上角的偏移
-let moves = 0, timerSec = 0, timerId = null;
-let canvasW = 0, canvasH = 0;
+let canvasW=0, canvasH=0;
+let moves=0, timerSec=0, timerId=null;
+let solved=false, gameInited=false;
 
 // ========== 难度选择 ==========
-$('#diff-row').addEventListener('click', e => {
-  const btn = e.target.closest('.diff-btn');
-  if (!btn) return;
-  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  gridN = +btn.dataset.n;
+document.querySelectorAll('.diff-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(x => x.classList.remove('selected'));
+    b.classList.add('selected');
+    gridN = +b.dataset.n;
+  });
 });
 
 // ========== 照片上传 ==========
 fileInp.addEventListener('change', () => {
-  const file = fileInp.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
+  const f = fileInp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
     const img = new Image();
-    img.onload = () => { image = img; previewThumb.src = reader.result; previewThumb.style.display='block'; startBtn.disabled = false; };
-    img.src = reader.result;
+    img.onload = () => { image = img; previewThumb.src = r.result; previewThumb.style.display='block'; startBtn.disabled = false; };
+    img.src = r.result;
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(f);
 });
 
-// ========== 画 jigsaw 碎片路径 ==========
-function piecePath(px, py, pw, ph, row, col, r) {
-  // r = tab radius; px,py = 碎片绘制位置; pw,ph = 碎片宽高
-  const p = new Path2D();
-  const L = px, R = px + pw, T = py, B = py + ph;
-  const topTab = row > 0 && ((row + col) % 2 === 0);      // top edge has tab?
-  const bottomTab = row < gridN - 1 && ((row + col) % 2 !== 0);
-  const leftTab = col > 0 && ((row + col) % 2 === 0);
-  const rightTab = col < gridN - 1 && ((row + col) % 2 !== 0);
-  const midX = L + pw/2, midY = T + ph/2;
-  const r2 = r * 0.7; // blank radius slightly smaller for visual fit
+// ========== 核心逻辑 ==========
+function getNeighbors(r, c) {
+  const res = [];
+  if (r > 0) res.push({r: r-1, c});
+  if (r < gridN-1) res.push({r: r+1, c});
+  if (c > 0) res.push({r, c: c-1});
+  if (c < gridN-1) res.push({r, c: c+1});
+  return res;
+}
 
-  function drawEdge(x1,y1, x2,y2, hasTab, dir) {
-    // dir: 't'=top, 'b'=bottom, 'l'=left, 'r'=right
-    const mx = (x1+x2)/2, my = (y1+y2)/2;
-    if (!hasTab && !(row === 0 && dir === 't') && !(row === gridN-1 && dir === 'b') &&
-        !(col === 0 && dir === 'l') && !(col === gridN-1 && dir === 'r')) {
-      // blank (inward dent) - treat as no tab, just go straight
-      p.lineTo(x2, y2);
-      return;
-    }
-    if (!hasTab) { p.lineTo(x2, y2); return; }
-    // tab: outward bump
-    let cx, cy, startAngle, endAngle;
-    if (dir === 't') { cx = mx; cy = my - r*0.3; startAngle = Math.PI*0.15; endAngle = Math.PI*0.85; }
-    else if (dir === 'b') { cx = mx; cy = my + r*0.3; startAngle = Math.PI*1.15; endAngle = Math.PI*1.85; }
-    else if (dir === 'l') { cx = mx - r*0.3; cy = my; startAngle = Math.PI*1.65; endAngle = Math.PI*0.35; }
-    else { cx = mx + r*0.3; cy = my; startAngle = Math.PI*0.65; endAngle = Math.PI*1.35; }
-    p.lineTo(mx - (dir==='l'||dir==='r'?0:r), my - (dir==='t'||dir==='b'?0:r));
-    p.arc(cx, cy, r, startAngle, endAngle);
-    p.lineTo(x2, y2);
+function swap(r1, c1, r2, c2) {
+  // 交换两个格子的碎片
+  const p1 = pieces.find(p => p.curR === r1 && p.curC === c1);
+  const p2 = pieces.find(p => p.curR === r2 && p.curC === c2);
+  if (p1) { p1.curR = r2; p1.curC = c2; }
+  if (p2) { p2.curR = r1; p2.curC = c1; }
+  // 更新空位
+  if (r1 === emptyR && c1 === emptyC) { emptyR = r2; emptyC = c2; }
+  else if (r2 === emptyR && c2 === emptyC) { emptyR = r1; emptyC = c1; }
+}
+
+function shuffle() {
+  // 从正确状态出发，做随机有效移动来打乱
+  for (let i = 0; i < gridN * gridN * 30; i++) {
+    const nb = getNeighbors(emptyR, emptyC);
+    const pick = nb[Math.floor(Math.random() * nb.length)];
+    swap(emptyR, emptyC, pick.r, pick.c);
   }
+}
 
-  p.moveTo(L, T);
-  // Top edge
-  if (row === 0) { p.lineTo(R, T); } // board top: straight
-  else { drawEdge(L,T, R,T, topTab, 't'); }
-  // Right edge
-  if (col === gridN - 1) { p.lineTo(R, B); }
-  else { drawEdge(R,T, R,B, rightTab, 'r'); }
-  // Bottom edge
-  if (row === gridN - 1) { p.lineTo(L, B); }
-  else { drawEdge(R,B, L,B, bottomTab, 'b'); }
-  // Left edge
-  if (col === 0) { p.lineTo(L, T); }
-  else { drawEdge(L,B, L,T, leftTab, 'l'); }
+function checkWin() {
+  return pieces.every(p => p.curR === p.correctR && p.curC === p.correctC);
+}
 
-  p.closePath();
-  return p;
+function getGridCell(cx, cy) {
+  const col = Math.floor((cx - boardX) / cellSize);
+  const row = Math.floor((cy - boardY) / cellSize);
+  if (row >= 0 && row < gridN && col >= 0 && col < gridN) return {row, col};
+  return null;
 }
 
 // ========== 渲染 ==========
@@ -234,157 +208,105 @@ function render() {
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
-  // 拼图板区域半透明背景
-  ctx.fillStyle = 'rgba(255,255,255,.04)';
-  ctx.strokeStyle = 'rgba(255,255,255,.12)';
-  ctx.lineWidth = 1;
-  ctx.fillRect(boardX - 4, boardY - 4, boardSize + 8, boardSize + 8);
-  ctx.strokeRect(boardX - 4, boardY - 4, boardSize + 8, boardSize + 8);
+  // 拼图板
+  const pad = 6;
+  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  ctx.strokeStyle = 'rgba(255,255,255,.2)';
+  ctx.lineWidth = 2;
+  roundRect(boardX-pad, boardY-pad, boardSize+pad*2, boardSize+pad*2, 10);
 
-  // 目标格子虚线
-  ctx.strokeStyle = 'rgba(255,255,255,.08)';
-  ctx.setLineDash([3, 6]);
-  for (let r = 0; r < gridN; r++) {
-    for (let c = 0; c < gridN; c++) {
-      ctx.strokeRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
-    }
+  // 画每个碎片
+  for (const p of pieces) {
+    const x = boardX + p.curC * cellSize;
+    const y = boardY + p.curR * cellSize;
+    const gap = 2;
+    ctx.save();
+    // 圆角裁剪
+    const clip = new Path2D();
+    roundRectPath(clip, x+gap, y+gap, cellSize-gap*2, cellSize-gap*2, 6);
+    ctx.clip(clip);
+    // 画图片
+    const sx = boardX + p.correctC * cellSize;
+    const sy = boardY + p.correctR * cellSize;
+    ctx.drawImage(image, sx, sy, cellSize, cellSize, x+gap, y+gap, cellSize-gap*2, cellSize-gap*2);
+    ctx.restore();
+    // 边框
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke(clip);
   }
+
+  // 空位标记（虚线框）
+  const ex = boardX + emptyC * cellSize;
+  const ey = boardY + emptyR * cellSize;
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1.5;
+  roundRect(ex+2, ey+2, cellSize-4, cellSize-4, 4);
   ctx.setLineDash([]);
 
-  // 渲染顺序：已锁定（底板）→ 未锁定碎片 → 拖拽中碎片（最上层）
-  const tabR = cellSize * 0.13;
-  const order = pieces.map((_, i) => i);
-  if (dragIdx >= 0) { order.splice(order.indexOf(dragIdx), 1); order.push(dragIdx); }
-
-  // 第一遍：已锁定碎片（在目标位置）
-  for (const p of pieces) {
-    if (p.locked) drawPiece(p, tabR);
-  }
-  // 第二遍：未锁定碎片（含拖拽的在最上）
-  for (const idx of order) {
-    const p = pieces[idx];
-    if (!p.locked) drawPiece(p, tabR);
-  }
-
-  // 调试：画红点标记触摸位置
-  if (debugTouch) {
-    ctx.fillStyle = 'red';
-    ctx.beginPath();
-    ctx.arc(debugTouch.x, debugTouch.y, 8, 0, Math.PI * 2);
-    ctx.fill();
+  if (solved) {
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.fillRect(boardX, boardY, boardSize, boardSize);
     ctx.fillStyle = '#fff';
-    ctx.font = '12px sans-serif';
-    ctx.fillText(`(${Math.round(debugTouch.x)},${Math.round(debugTouch.y)}) drag:${dragIdx}`, debugTouch.x + 14, debugTouch.y + 4);
+    ctx.font = `bold ${cellSize*0.5}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('🎉', boardX+boardSize/2, boardY+boardSize/2+cellSize*0.15);
   }
 }
 
-function drawPiece(p, tabR) {
-  const x = p.locked ? p.tx : p.x;
-  const y = p.locked ? p.ty : p.y;
-  const path = piecePath(x, y, cellSize, cellSize, p.row, p.col, tabR);
-  const isDragging = !p.locked && pieces.indexOf(p) === dragIdx;
-
-  // 画图片部分（clip 到碎片形状）
-  ctx.save();
-  ctx.clip(path);
-  const sx = boardX + p.col * cellSize;
-  const sy = boardY + p.row * cellSize;
-  ctx.drawImage(image, sx, sy, cellSize, cellSize, x, y, cellSize, cellSize);
-  ctx.restore();
-
-  // 画边框 + 阴影（在 clip 外部，阴影不被裁切）
-  ctx.save();
-  ctx.strokeStyle = isDragging ? 'rgba(192,132,252,.7)' : 'rgba(255,255,255,.35)';
-  ctx.lineWidth = isDragging ? 2 : 1.2;
-  if (isDragging) {
-    ctx.shadowColor = 'rgba(0,0,0,.5)';
-    ctx.shadowBlur = 14;
-    ctx.shadowOffsetX = 3;
-    ctx.shadowOffsetY = 3;
-  }
-  ctx.stroke(path);
-  ctx.restore();
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y);
+  ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
 }
 
-// ========== 命中检测（简化矩形 + 容错边距） ==========
-function hitTest(mx, my) {
-  const margin = cellSize * 0.18;
-  for (let i = pieces.length - 1; i >= 0; i--) {
-    const p = pieces[i];
-    if (p.locked) continue;
-    if (mx >= p.x - margin && mx <= p.x + cellSize + margin &&
-        my >= p.y - margin && my <= p.y + cellSize + margin) return i;
-  }
-  return -1;
+function roundRectPath(p, x, y, w, h, r) {
+  p.moveTo(x+r, y); p.lineTo(x+w-r, y);
+  p.arcTo(x+w, y, x+w, y+r, r);
+  p.lineTo(x+w, y+h-r); p.arcTo(x+w, y+h, x+w-r, y+h, r);
+  p.lineTo(x+r, y+h); p.arcTo(x, y+h, x, y+h-r, r);
+  p.lineTo(x, y+r); p.arcTo(x, y, x+r, y, r);
+  p.closePath();
 }
 
-// ========== 指针事件（绑 document，手动判断是否在 canvas 内） ==========
-let debugTouch = null;
-
+// ========== 触摸 / 点击 ==========
 function getCanvasPos(e) {
   const rect = canvas.getBoundingClientRect();
-  return {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top,
-    inCanvas: e.clientX >= rect.left && e.clientX <= rect.right &&
-              e.clientY >= rect.top && e.clientY <= rect.bottom
-  };
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
-document.addEventListener('pointerdown', onDown);
-document.addEventListener('pointermove', onMove);
-document.addEventListener('pointerup', onUp);
-document.addEventListener('pointercancel', onUp);
-
-function onDown(e) {
+canvas.addEventListener('pointerdown', e => {
+  if (solved) return;
   const pos = getCanvasPos(e);
-  if (!pos.inCanvas) return;
-  if (gameScr.style.display === 'none') return;
-  debugTouch = pos;
-  canvas.setPointerCapture(e.pointerId);
-  if (!pieces.length) { render(); return; }
-  const idx = hitTest(pos.x, pos.y);
-  if (idx >= 0) {
-    dragIdx = idx;
-    const p = pieces[dragIdx];
-    dragOffX = pos.x - p.x;
-    dragOffY = pos.y - p.y;
-    if (!timerId) startTimer();
+  const cell = getGridCell(pos.x, pos.y);
+  if (!cell) return;
+
+  const {row, col} = cell;
+  // 检查是否与空位相邻
+  if (Math.abs(row - emptyR) + Math.abs(col - emptyC) !== 1) return;
+  // 不能是空位本身
+  if (row === emptyR && col === emptyC) return;
+
+  swap(row, col, emptyR, emptyC);
+  moves++;
+  movesEl.textContent = moves;
+  if (!timerId) startTimer();
+
+  if (checkWin()) {
+    solved = true;
+    stopTimer();
+    winTime.textContent = timerEl.textContent;
+    winMoves.textContent = moves;
+    setTimeout(() => { winScr.style.display = 'flex'; }, 400);
   }
   render();
-}
-
-function onMove(e) {
-  if (dragIdx < 0) return;
-  const pos = getCanvasPos(e);
-  debugTouch = pos;
-  e.preventDefault();
-  const p = pieces[dragIdx];
-  p.x = pos.x - dragOffX;
-  p.y = pos.y - dragOffY;
-  p.x = Math.max(-cellSize * 0.6, Math.min(canvasW - cellSize * 0.4, p.x));
-  p.y = Math.max(0, Math.min(canvasH - cellSize * 0.4, p.y));
-  render();
-}
-
-function onUp(e) {
-  if (dragIdx < 0) return;
-  const pos = getCanvasPos(e);
-  debugTouch = pos;
-  canvas.releasePointerCapture(e.pointerId);
-  const p = pieces[dragIdx];
-  const dx = p.x - p.tx, dy = p.y - p.ty;
-  const snapDist = cellSize * 0.30;
-  if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
-    p.x = p.tx; p.y = p.ty;
-    p.locked = true;
-    moves++;
-    movesEl.textContent = moves;
-    checkWin();
-  }
-  dragIdx = -1;
-  render();
-}
+});
 
 // ========== 计时器 ==========
 function startTimer() {
@@ -396,129 +318,92 @@ function startTimer() {
     timerEl.textContent = m + ':' + s;
   }, 1000);
 }
-
 function stopTimer() { clearInterval(timerId); timerId = null; }
 
-// ========== 胜利检测 ==========
-function checkWin() {
-  if (pieces.every(p => p.locked)) {
-    stopTimer();
-    winTime.textContent = timerEl.textContent;
-    winMoves.textContent = moves;
-    winScr.style.display = 'flex';
-  }
-}
-
 // ========== 游戏初始化 ==========
-let gameInited = false;
 function initGame() {
   if (!image || gameInited) return;
-  stopTimer();
-  timerSec = 0; moves = 0;
-  timerEl.textContent = '00:00';
-  movesEl.textContent = '0';
+  gameInited = true;
+  stopTimer(); timerSec = 0; moves = 0; solved = false;
+  timerEl.textContent = '00:00'; movesEl.textContent = '0';
 
-  // 计算画布尺寸
-  const barH = $('#bar').offsetHeight;
+  // 画布尺寸
+  const barH = $('#bar').offsetHeight || 48;
   canvasW = window.innerWidth;
   canvasH = window.innerHeight - barH;
 
-  // 正方形裁剪原图 + 缩放到合理尺寸
-  const MAX_DIM = 1024;
-  const minDim = Math.min(image.naturalWidth, image.naturalHeight);
-  const cropDim = Math.min(minDim, MAX_DIM);
-  const cropX = (image.naturalWidth - minDim) / 2;
-  const cropY = (image.naturalHeight - minDim) / 2;
-
-  const cropCanvas = document.createElement('canvas');
-  cropCanvas.width = cropDim;
-  cropCanvas.height = cropDim;
-  const cropCtx = cropCanvas.getContext('2d');
-  cropCtx.drawImage(image, cropX, cropY, minDim, minDim, 0, 0, cropDim, cropDim);
+  // 裁剪 + 缩放
+  const MAX = 1024;
+  const minD = Math.min(image.naturalWidth, image.naturalHeight);
+  const cropD = Math.min(minD, MAX);
+  const cx = (image.naturalWidth - minD)/2, cy = (image.naturalHeight - minD)/2;
+  const tc = document.createElement('canvas'); tc.width = cropD; tc.height = cropD;
+  tc.getContext('2d').drawImage(image, cx, cy, minD, minD, 0, 0, cropD, cropD);
   const cropped = new Image();
-  cropped.onload = () => {
-    image = cropped;
-    doStart();
-  };
-  cropped.src = cropCanvas.toDataURL();
-  if (cropped.complete) {
-    image = cropped;
-    doStart();
-  }
+  cropped.onload = () => { image = cropped; doStart(); };
+  cropped.src = tc.toDataURL();
+  if (cropped.complete) { image = cropped; doStart(); }
 }
 
 function doStart() {
-  gameInited = true;
   computeLayout();
-  setupPieces();
+  createPieces();
   startScr.style.display = 'none';
   gameScr.style.display = 'flex';
   render();
 }
 
 function computeLayout() {
-  const maxBoardW = canvasW * 0.82;
-  const maxBoardH = canvasH * 0.58;
-  boardSize = Math.min(maxBoardW, maxBoardH);
+  boardSize = Math.min(canvasW * 0.88, canvasH * 0.62);
   cellSize = boardSize / gridN;
   boardX = (canvasW - boardSize) / 2;
-  boardY = Math.max(6, (canvasH - boardSize) / 2 - canvasH * 0.08);
+  boardY = Math.max(4, (canvasH - boardSize) / 2 - canvasH * 0.05);
 }
 
-function setupPieces() {
+function createPieces() {
   pieces = [];
-  const margin = cellSize * 0.15;
   for (let r = 0; r < gridN; r++) {
     for (let c = 0; c < gridN; c++) {
-      const tx = boardX + c * cellSize;
-      const ty = boardY + r * cellSize;
-      const scatterTop = boardY + boardSize + 30;
-      const scatterBot = canvasH - cellSize - 6;
-      const sx = margin + Math.random() * (canvasW - cellSize - margin * 2);
-      const sy = scatterTop + Math.random() * Math.max(10, scatterBot - scatterTop);
-      pieces.push({ row: r, col: c, x: sx, y: sy, tx, ty, locked: false });
+      if (r === gridN-1 && c === gridN-1) continue; // 右下角 = 空位
+      pieces.push({ id: r*gridN+c, correctR: r, correctC: c, curR: r, curC: c });
     }
   }
-  dragIdx = -1;
+  emptyR = gridN - 1; emptyC = gridN - 1;
+  shuffle();
 }
 
-// ========== 按钮事件 ==========
-startBtn.addEventListener('click', initGame);
 function restartGame() {
-  stopTimer(); timerSec = 0; moves = 0;
+  stopTimer(); timerSec = 0; moves = 0; solved = false;
   timerEl.textContent = '00:00'; movesEl.textContent = '0';
-  setupPieces(); dragIdx = -1; render();
+  createPieces();
+  render();
 }
+
+// ========== 按钮 ==========
+startBtn.addEventListener('click', initGame);
 $('#restart-btn').addEventListener('click', restartGame);
-$('#home-btn').addEventListener('click', () => { stopTimer(); gameScr.style.display='none'; startScr.style.display='flex'; gameInited = false; startBtn.disabled = !image; });
-$('#hint-btn').addEventListener('click', () => { overlayImg.src = image?.src; overlay.style.display='flex'; });
+$('#home-btn').addEventListener('click', () => {
+  stopTimer(); gameScr.style.display='none'; startScr.style.display='flex'; gameInited=false;
+  startBtn.disabled = !image;
+});
+$('#hint-btn').addEventListener('click', () => {
+  overlayImg.src = image?.src; overlay.style.display='flex';
+});
 overlay.addEventListener('click', () => overlay.style.display='none');
 $('#win-btn').addEventListener('click', () => { winScr.style.display='none'; restartGame(); });
 
-// ========== 窗口 resize（保持进度，只更新布局） ==========
+// ========== resize ==========
 let resizeTm = null;
 window.addEventListener('resize', () => {
   if (gameScr.style.display === 'none') return;
   clearTimeout(resizeTm);
   resizeTm = setTimeout(() => {
-    const barH = $('#bar').offsetHeight;
-    const oldBoardX = boardX, oldBoardY = boardY, oldCell = cellSize;
     canvasW = window.innerWidth;
-    canvasH = window.innerHeight - barH;
+    canvasH = window.innerHeight - ($('#bar').offsetHeight || 48);
     computeLayout();
-    // 按比例更新碎片位置
-    const scaleX = cellSize / (oldCell || cellSize);
-    const scaleY = scaleX;
-    for (const p of pieces) {
-      p.tx = boardX + p.col * cellSize;
-      p.ty = boardY + p.row * cellSize;
-      if (p.locked) { p.x = p.tx; p.y = p.ty; }
-      else { p.x = boardX + (p.x - oldBoardX) * scaleX; p.y = boardY + (p.y - oldBoardY) * scaleY; }
-    }
     render();
   }, 250);
 });
-
 </script>
 </body>
 </html>
