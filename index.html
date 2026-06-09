@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5B6ABF">
+<link rel="manifest" href="manifest.json">
+<title>拼图游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;touch-action:manipulation;
+  font-family:-apple-system,system-ui,sans-serif;
+  background:#1a1a2e;color:#e0e0e0;
+  user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent}
+/* ---- 开始页 ---- */
+#start{padding:40px 20px;text-align:center;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px}
+#start h1{font-size:2.2em;background:linear-gradient(135deg,#7B8AE0,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#upload-wrap{position:relative}
+#upload-wrap input[type=file]{opacity:0;position:absolute;inset:0;cursor:pointer}
+#upload-btn{display:inline-block;padding:14px 36px;background:#5B6ABF;border-radius:30px;font-size:1.1em;font-weight:600;color:#fff;transition:transform .15s}
+#upload-btn:active{transform:scale(.95)}
+#preview-thumb{width:120px;height:120px;border-radius:16px;object-fit:cover;border:3px solid #5B6ABF;display:none}
+#diff-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.diff-btn{padding:10px 20px;border:2px solid #444;border-radius:24px;background:transparent;color:#ccc;font-size:1em;cursor:pointer;transition:all .2s}
+.diff-btn.selected{border-color:#7B8AE0;background:rgba(123,138,224,.2);color:#fff}
+#start-btn{padding:14px 48px;background:#C084FC;border:none;border-radius:30px;font-size:1.2em;font-weight:700;color:#fff;cursor:pointer;transition:transform .15s,opacity .2s}
+#start-btn:disabled{opacity:.35;pointer-events:none}
+#start-btn:active{transform:scale(.95)}
+/* ---- 游戏页 ---- */
+#game{display:none;height:100%;flex-direction:column}
+#bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#16213e;gap:4px;flex-shrink:0}
+#bar span{font-size:.85em;white-space:nowrap}
+.bar-btn{background:rgba(123,138,224,.25);border:none;color:#ccc;padding:6px 12px;border-radius:16px;font-size:.82em;cursor:pointer}
+.bar-btn:active{background:rgba(123,138,224,.5)}
+#canvas-wrap{flex:1;display:flex;justify-content:center;align-items:center;overflow:hidden}
+canvas{display:block;touch-action:none}
+/* ---- 原图浮层 ---- */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;justify-content:center;align-items:center}
+#overlay img{max-width:90vw;max-height:80vh;border-radius:12px;border:2px solid #5B6ABF}
+/* ---- 胜利浮层 ---- */
+#win{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:20;flex-direction:column;justify-content:center;align-items:center;gap:16px}
+#win h2{font-size:2.8em}
+#win p{font-size:1.15em;color:#aaa}
+#win button{padding:12px 40px;background:#C084FC;border:none;border-radius:30px;font-size:1.15em;font-weight:700;color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- 开始页 -->
+<div id="start">
+  <h1>🧩 拼图游戏</h1>
+  <div id="upload-wrap">
+    <div id="upload-btn">📷 选择照片</div>
+    <input type="file" accept="image/*" id="file-input">
+  </div>
+  <img id="preview-thumb" alt="预览">
+  <div id="diff-row">
+    <button class="diff-btn" data-n="3">3×3 简单</button>
+    <button class="diff-btn selected" data-n="4">4×4 中等</button>
+    <button class="diff-btn" data-n="5">5×5 困难</button>
+  </div>
+  <button id="start-btn" disabled>开始拼图</button>
+</div>
+
+<!-- 游戏页 -->
+<div id="game">
+  <div id="bar">
+    <span>⏱ <b id="timer">00:00</b></span>
+    <span>👆 <b id="moves">0</b>步</span>
+    <button class="bar-btn" id="hint-btn">👁 原图</button>
+    <button class="bar-btn" id="restart-btn">🔄 重来</button>
+    <button class="bar-btn" id="home-btn">🏠</button>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+  </div>
+</div>
+
+<!-- 原图浮层 -->
+<div id="overlay"><img id="overlay-img" alt="原图"></div>
+
+<!-- 胜利浮层 -->
+<div id="win">
+  <h2>🎉 完成!</h2>
+  <p>⏱ <span id="win-time"></span> &nbsp; 👆 <span id="win-moves"></span>步</p>
+  <button id="win-btn">再来一局</button>
+</div>
+
+<script>
+// ========== DOM ==========
+const $ = s => document.querySelector(s);
+const startScr = $('#start'), gameScr = $('#game');
+const fileInp = $('#file-input'), previewThumb = $('#preview-thumb');
+const startBtn = $('#start-btn');
+const canvas = $('#c'), ctx = canvas.getContext('2d');
+const timerEl = $('#timer'), movesEl = $('#moves');
+const overlay = $('#overlay'), overlayImg = $('#overlay-img');
+const winScr = $('#win'), winTime = $('#win-time'), winMoves = $('#win-moves');
+
+// ========== 状态 ==========
+let image = null;           // HTMLImageElement 原图
+let gridN = 4;              // N×N
+let pieces = [];            // [{row,col,x,y,tx,ty,locked}]  tx,ty = 目标坐标
+let boardX=0, boardY=0, cellSize=0, boardSize=0;
+let dragIdx = -1;           // 正在拖的碎片索引
+let dragOffX=0, dragOffY=0; // 手指相对碎片左上角的偏移
+let moves = 0, timerSec = 0, timerId = null;
+let canvasW = 0, canvasH = 0;
+
+// ========== 难度选择 ==========
+$('#diff-row').addEventListener('click', e => {
+  const btn = e.target.closest('.diff-btn');
+  if (!btn) return;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  gridN = +btn.dataset.n;
+});
+
+// ========== 照片上传 ==========
+fileInp.addEventListener('change', () => {
+  const file = fileInp.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => { image = img; previewThumb.src = reader.result; previewThumb.style.display='block'; startBtn.disabled = false; };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ========== 画 jigsaw 碎片路径 ==========
+function piecePath(px, py, pw, ph, row, col, r) {
+  // r = tab radius; px,py = 碎片绘制位置; pw,ph = 碎片宽高
+  const p = new Path2D();
+  const L = px, R = px + pw, T = py, B = py + ph;
+  const topTab = row > 0 && ((row + col) % 2 === 0);      // top edge has tab?
+  const bottomTab = row < gridN - 1 && ((row + col) % 2 !== 0);
+  const leftTab = col > 0 && ((row + col) % 2 === 0);
+  const rightTab = col < gridN - 1 && ((row + col) % 2 !== 0);
+  const midX = L + pw/2, midY = T + ph/2;
+  const r2 = r * 0.7; // blank radius slightly smaller for visual fit
+
+  function drawEdge(x1,y1, x2,y2, hasTab, dir) {
+    // dir: 't'=top, 'b'=bottom, 'l'=left, 'r'=right
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    if (!hasTab && !(row === 0 && dir === 't') && !(row === gridN-1 && dir === 'b') &&
+        !(col === 0 && dir === 'l') && !(col === gridN-1 && dir === 'r')) {
+      // blank (inward dent) - treat as no tab, just go straight
+      p.lineTo(x2, y2);
+      return;
+    }
+    if (!hasTab) { p.lineTo(x2, y2); return; }
+    // tab: outward bump
+    let cx, cy, startAngle, endAngle;
+    if (dir === 't') { cx = mx; cy = my - r*0.3; startAngle = Math.PI*0.15; endAngle = Math.PI*0.85; }
+    else if (dir === 'b') { cx = mx; cy = my + r*0.3; startAngle = Math.PI*1.15; endAngle = Math.PI*1.85; }
+    else if (dir === 'l') { cx = mx - r*0.3; cy = my; startAngle = Math.PI*1.65; endAngle = Math.PI*0.35; }
+    else { cx = mx + r*0.3; cy = my; startAngle = Math.PI*0.65; endAngle = Math.PI*1.35; }
+    p.lineTo(mx - (dir==='l'||dir==='r'?0:r), my - (dir==='t'||dir==='b'?0:r));
+    p.arc(cx, cy, r, startAngle, endAngle);
+    p.lineTo(x2, y2);
+  }
+
+  p.moveTo(L, T);
+  // Top edge
+  if (row === 0) { p.lineTo(R, T); } // board top: straight
+  else { drawEdge(L,T, R,T, topTab, 't'); }
+  // Right edge
+  if (col === gridN - 1) { p.lineTo(R, B); }
+  else { drawEdge(R,T, R,B, rightTab, 'r'); }
+  // Bottom edge
+  if (row === gridN - 1) { p.lineTo(L, B); }
+  else { drawEdge(R,B, L,B, bottomTab, 'b'); }
+  // Left edge
+  if (col === 0) { p.lineTo(L, T); }
+  else { drawEdge(L,B, L,T, leftTab, 'l'); }
+
+  p.closePath();
+  return p;
+}
+
+// ========== 渲染 ==========
+function render() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // 背景
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // 拼图板区域半透明背景
+  ctx.fillStyle = 'rgba(255,255,255,.04)';
+  ctx.strokeStyle = 'rgba(255,255,255,.12)';
+  ctx.lineWidth = 1;
+  ctx.fillRect(boardX - 4, boardY - 4, boardSize + 8, boardSize + 8);
+  ctx.strokeRect(boardX - 4, boardY - 4, boardSize + 8, boardSize + 8);
+
+  // 目标格子虚线
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  ctx.setLineDash([3, 6]);
+  for (let r = 0; r < gridN; r++) {
+    for (let c = 0; c < gridN; c++) {
+      ctx.strokeRect(boardX + c * cellSize, boardY + r * cellSize, cellSize, cellSize);
+    }
+  }
+  ctx.setLineDash([]);
+
+  // 渲染顺序：已锁定（底板）→ 未锁定碎片 → 拖拽中碎片（最上层）
+  const tabR = cellSize * 0.13;
+  const order = pieces.map((_, i) => i);
+  if (dragIdx >= 0) { order.splice(order.indexOf(dragIdx), 1); order.push(dragIdx); }
+
+  // 第一遍：已锁定碎片（在目标位置）
+  for (const p of pieces) {
+    if (p.locked) drawPiece(p, tabR);
+  }
+  // 第二遍：未锁定碎片（含拖拽的在最上）
+  for (const idx of order) {
+    const p = pieces[idx];
+    if (!p.locked) drawPiece(p, tabR);
+  }
+}
+
+function drawPiece(p, tabR) {
+  const x = p.locked ? p.tx : p.x;
+  const y = p.locked ? p.ty : p.y;
+  const path = piecePath(x, y, cellSize, cellSize, p.row, p.col, tabR);
+  const isDragging = !p.locked && pieces.indexOf(p) === dragIdx;
+
+  // 画图片部分（clip 到碎片形状）
+  ctx.save();
+  ctx.clip(path);
+  const sx = boardX + p.col * cellSize;
+  const sy = boardY + p.row * cellSize;
+  ctx.drawImage(image, sx, sy, cellSize, cellSize, x, y, cellSize, cellSize);
+  ctx.restore();
+
+  // 画边框 + 阴影（在 clip 外部，阴影不被裁切）
+  ctx.save();
+  ctx.strokeStyle = isDragging ? 'rgba(192,132,252,.7)' : 'rgba(255,255,255,.35)';
+  ctx.lineWidth = isDragging ? 2 : 1.2;
+  if (isDragging) {
+    ctx.shadowColor = 'rgba(0,0,0,.5)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+  }
+  ctx.stroke(path);
+  ctx.restore();
+}
+
+// ========== 命中检测 ==========
+function hitTest(mx, my) {
+  const tabR = cellSize * 0.13;
+  // 从后往前检查（后面的在上面）
+  for (let i = pieces.length - 1; i >= 0; i--) {
+    const p = pieces[i];
+    if (p.locked) continue;
+    const x = p.x, y = p.y;
+    // 粗检
+    if (mx >= x - tabR && mx <= x + cellSize + tabR && my >= y - tabR && my <= y + cellSize + tabR) {
+      // 精检：用路径
+      const path = piecePath(x, y, cellSize, cellSize, p.row, p.col, tabR);
+      if (ctx.isPointInPath(path, mx, my)) return i;
+    }
+  }
+  return -1;
+}
+
+// ========== 触摸 / 鼠标事件 ==========
+function getEventPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+
+canvas.addEventListener('touchstart', onDown, { passive: false });
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('touchmove', onMove, { passive: false });
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('touchend', onUp);
+canvas.addEventListener('mouseup', onUp);
+canvas.addEventListener('touchcancel', onUp);
+canvas.addEventListener('mouseleave', onUp);
+
+function onDown(e) {
+  if (!pieces.length) return;
+  const { x, y } = getEventPos(e);
+  dragIdx = hitTest(x, y);
+  if (dragIdx >= 0) {
+    e.preventDefault();
+    const p = pieces[dragIdx];
+    dragOffX = x - p.x;
+    dragOffY = y - p.y;
+    // 如果已锁定，解锁并计数
+    // （不，锁定就是锁定了。只拖动未锁定的碎片）
+    if (!timerId) startTimer();
+    render();
+  }
+}
+
+function onMove(e) {
+  if (dragIdx < 0) return;
+  e.preventDefault();
+  const { x, y } = getEventPos(e);
+  const p = pieces[dragIdx];
+  p.x = x - dragOffX;
+  p.y = y - dragOffY;
+  // 限制不超出画面
+  p.x = Math.max(-cellSize * 0.6, Math.min(canvasW - cellSize * 0.4, p.x));
+  p.y = Math.max(0, Math.min(canvasH - cellSize * 0.4, p.y));
+  render();
+}
+
+function onUp(e) {
+  if (dragIdx < 0) return;
+  const p = pieces[dragIdx];
+  // 吸附检测
+  const dx = p.x - p.tx, dy = p.y - p.ty;
+  const snapDist = cellSize * 0.28;
+  if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
+    p.x = p.tx;
+    p.y = p.ty;
+    p.locked = true;
+    moves++;
+    movesEl.textContent = moves;
+    checkWin();
+  } else if (p.locked) {
+    // 之前锁定但现在拖远了，不解锁（保持锁定状态）
+    // 把碎片放回原位置... 实际上 locked 的不该被拖
+  }
+  dragIdx = -1;
+  render();
+}
+
+// ========== 计时器 ==========
+function startTimer() {
+  if (timerId) return;
+  timerId = setInterval(() => {
+    timerSec++;
+    const m = Math.floor(timerSec / 60).toString().padStart(2, '0');
+    const s = (timerSec % 60).toString().padStart(2, '0');
+    timerEl.textContent = m + ':' + s;
+  }, 1000);
+}
+
+function stopTimer() { clearInterval(timerId); timerId = null; }
+
+// ========== 胜利检测 ==========
+function checkWin() {
+  if (pieces.every(p => p.locked)) {
+    stopTimer();
+    winTime.textContent = timerEl.textContent;
+    winMoves.textContent = moves;
+    winScr.style.display = 'flex';
+  }
+}
+
+// ========== 游戏初始化 ==========
+let gameInited = false;
+function initGame() {
+  if (!image || gameInited) return;
+  stopTimer();
+  timerSec = 0; moves = 0;
+  timerEl.textContent = '00:00';
+  movesEl.textContent = '0';
+
+  // 计算画布尺寸
+  const barH = $('#bar').offsetHeight;
+  canvasW = window.innerWidth;
+  canvasH = window.innerHeight - barH;
+
+  // 正方形裁剪原图 + 缩放到合理尺寸
+  const MAX_DIM = 1024;
+  const minDim = Math.min(image.naturalWidth, image.naturalHeight);
+  const cropDim = Math.min(minDim, MAX_DIM);
+  const cropX = (image.naturalWidth - minDim) / 2;
+  const cropY = (image.naturalHeight - minDim) / 2;
+
+  const cropCanvas = document.createElement('canvas');
+  cropCanvas.width = cropDim;
+  cropCanvas.height = cropDim;
+  const cropCtx = cropCanvas.getContext('2d');
+  cropCtx.drawImage(image, cropX, cropY, minDim, minDim, 0, 0, cropDim, cropDim);
+  const cropped = new Image();
+  cropped.onload = () => {
+    image = cropped;
+    doStart();
+  };
+  cropped.src = cropCanvas.toDataURL();
+  if (cropped.complete) {
+    image = cropped;
+    doStart();
+  }
+}
+
+function doStart() {
+  gameInited = true;
+  computeLayout();
+  setupPieces();
+  startScr.style.display = 'none';
+  gameScr.style.display = 'flex';
+  render();
+}
+
+function computeLayout() {
+  const maxBoardW = canvasW * 0.82;
+  const maxBoardH = canvasH * 0.58;
+  boardSize = Math.min(maxBoardW, maxBoardH);
+  cellSize = boardSize / gridN;
+  boardX = (canvasW - boardSize) / 2;
+  boardY = Math.max(6, (canvasH - boardSize) / 2 - canvasH * 0.08);
+}
+
+function setupPieces() {
+  pieces = [];
+  const margin = cellSize * 0.15;
+  for (let r = 0; r < gridN; r++) {
+    for (let c = 0; c < gridN; c++) {
+      const tx = boardX + c * cellSize;
+      const ty = boardY + r * cellSize;
+      const scatterTop = boardY + boardSize + 30;
+      const scatterBot = canvasH - cellSize - 6;
+      const sx = margin + Math.random() * (canvasW - cellSize - margin * 2);
+      const sy = scatterTop + Math.random() * Math.max(10, scatterBot - scatterTop);
+      pieces.push({ row: r, col: c, x: sx, y: sy, tx, ty, locked: false });
+    }
+  }
+  dragIdx = -1;
+}
+
+// ========== 按钮事件 ==========
+startBtn.addEventListener('click', initGame);
+function restartGame() {
+  stopTimer(); timerSec = 0; moves = 0;
+  timerEl.textContent = '00:00'; movesEl.textContent = '0';
+  setupPieces(); dragIdx = -1; render();
+}
+$('#restart-btn').addEventListener('click', restartGame);
+$('#home-btn').addEventListener('click', () => { stopTimer(); gameScr.style.display='none'; startScr.style.display='flex'; gameInited = false; startBtn.disabled = !image; });
+$('#hint-btn').addEventListener('click', () => { overlayImg.src = image?.src; overlay.style.display='flex'; });
+overlay.addEventListener('click', () => overlay.style.display='none');
+$('#win-btn').addEventListener('click', () => { winScr.style.display='none'; restartGame(); });
+
+// ========== 窗口 resize（保持进度，只更新布局） ==========
+let resizeTm = null;
+window.addEventListener('resize', () => {
+  if (gameScr.style.display === 'none') return;
+  clearTimeout(resizeTm);
+  resizeTm = setTimeout(() => {
+    const barH = $('#bar').offsetHeight;
+    const oldBoardX = boardX, oldBoardY = boardY, oldCell = cellSize;
+    canvasW = window.innerWidth;
+    canvasH = window.innerHeight - barH;
+    computeLayout();
+    // 按比例更新碎片位置
+    const scaleX = cellSize / (oldCell || cellSize);
+    const scaleY = scaleX;
+    for (const p of pieces) {
+      p.tx = boardX + p.col * cellSize;
+      p.ty = boardY + p.row * cellSize;
+      if (p.locked) { p.x = p.tx; p.y = p.ty; }
+      else { p.x = boardX + (p.x - oldBoardX) * scaleX; p.y = boardY + (p.y - oldBoardY) * scaleY; }
+    }
+    render();
+  }, 250);
+});
+
+// ========== PWA 注册 ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
