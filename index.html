@@ -10,7 +10,7 @@
 <title>拼图游戏</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;touch-action:manipulation;
+html,body{height:100%;overflow:hidden;touch-action:none;
   font-family:-apple-system,system-ui,sans-serif;
   background:#1a1a2e;color:#e0e0e0;
   user-select:none;-webkit-user-select:none;
@@ -37,6 +37,10 @@ html,body{height:100%;overflow:hidden;touch-action:manipulation;
 .bar-btn:active{background:rgba(123,138,224,.5)}
 #canvas-wrap{flex:1;display:flex;justify-content:center;align-items:center;overflow:hidden}
 canvas{display:block;touch-action:none}
+/* ---- 安装提示条 ---- */
+#install-bar{position:fixed;bottom:0;left:0;right:0;background:#16213e;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:30;border-top:1px solid rgba(123,138,224,.4);font-size:.88em}
+#install-btn{background:#5B6ABF;border:none;color:#fff;padding:8px 18px;border-radius:20px;font-weight:600;cursor:pointer;white-space:nowrap}
+#install-close{background:none;border:none;color:#888;font-size:1.2em;cursor:pointer;padding:4px 8px}
 /* ---- 原图浮层 ---- */
 #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10;justify-content:center;align-items:center}
 #overlay img{max-width:90vw;max-height:80vh;border-radius:12px;border:2px solid #5B6ABF}
@@ -79,14 +83,11 @@ canvas{display:block;touch-action:none}
   </div>
 </div>
 
-<!-- 原图浮层 -->
-<div id="overlay"><img id="overlay-img" alt="原图"></div>
-
-<!-- 胜利浮层 -->
-<div id="win">
-  <h2>🎉 完成!</h2>
-  <p>⏱ <span id="win-time"></span> &nbsp; 👆 <span id="win-moves"></span>步</p>
-  <button id="win-btn">再来一局</button>
+<!-- 安装提示 -->
+<div id="install-bar" style="display:none">
+  <span>📲 添加到桌面，像 App 一样用</span>
+  <button id="install-btn">安装</button>
+  <button id="install-close">✕</button>
 </div>
 
 <script>
@@ -99,7 +100,43 @@ const canvas = $('#c'), ctx = canvas.getContext('2d');
 const timerEl = $('#timer'), movesEl = $('#moves');
 const overlay = $('#overlay'), overlayImg = $('#overlay-img');
 const winScr = $('#win'), winTime = $('#win-time'), winMoves = $('#win-moves');
+const installBar = $('#install-bar'), installBtn = $('#install-btn');
+let deferredPrompt = null;
 
+// ========== PWA 安装 ==========
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBar.style.display = 'flex';
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  if (result.outcome === 'accepted') installBar.style.display = 'none';
+  deferredPrompt = null;
+});
+$('#install-close').addEventListener('click', () => { installBar.style.display = 'none'; });
+window.addEventListener('appinstalled', () => { installBar.style.display = 'none'; });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+
+<!-- 原图浮层 -->
+<div id="overlay"><img id="overlay-img" alt="原图"></div>
+
+<!-- 胜利浮层 -->
+<div id="win">
+  <h2>🎉 完成!</h2>
+  <p>⏱ <span id="win-time"></span> &nbsp; 👆 <span id="win-moves"></span>步</p>
+  <button id="win-btn">再来一局</button>
+</div>
+
+<script>
 // ========== 状态 ==========
 let image = null;           // HTMLImageElement 原图
 let gridN = 4;              // N×N
@@ -258,51 +295,57 @@ function drawPiece(p, tabR) {
   ctx.restore();
 }
 
-// ========== 命中检测 ==========
+// ========== 命中检测（简化矩形 + 容错边距） ==========
 function hitTest(mx, my) {
-  const tabR = cellSize * 0.13;
-  // 从后往前检查（后面的在上面）
+  const margin = cellSize * 0.18;
   for (let i = pieces.length - 1; i >= 0; i--) {
     const p = pieces[i];
     if (p.locked) continue;
-    const x = p.x, y = p.y;
-    // 粗检
-    if (mx >= x - tabR && mx <= x + cellSize + tabR && my >= y - tabR && my <= y + cellSize + tabR) {
-      // 精检：用路径
-      const path = piecePath(x, y, cellSize, cellSize, p.row, p.col, tabR);
-      if (ctx.isPointInPath(path, mx, my)) return i;
-    }
+    if (mx >= p.x - margin && mx <= p.x + cellSize + margin &&
+        my >= p.y - margin && my <= p.y + cellSize + margin) return i;
   }
   return -1;
 }
 
-// ========== 触摸 / 鼠标事件 ==========
+// ========== 触摸 / 鼠标事件（绑在 canvas-wrap 上保证接收） ==========
+const wrap = $('#canvas-wrap');
+let lastTouch = null;
+
 function getEventPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const t = e.touches ? e.touches[0] : e;
-  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  if (e.touches && e.touches.length > 0) {
+    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+  }
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
+  }
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
-canvas.addEventListener('touchstart', onDown, { passive: false });
-canvas.addEventListener('mousedown', onDown);
-canvas.addEventListener('touchmove', onMove, { passive: false });
-canvas.addEventListener('mousemove', onMove);
-canvas.addEventListener('touchend', onUp);
-canvas.addEventListener('mouseup', onUp);
-canvas.addEventListener('touchcancel', onUp);
-canvas.addEventListener('mouseleave', onUp);
+wrap.addEventListener('touchstart', onDown, { passive: false });
+wrap.addEventListener('mousedown', onDown);
+wrap.addEventListener('touchmove', onMove, { passive: false });
+wrap.addEventListener('mousemove', onMove);
+wrap.addEventListener('touchend', onUp);
+wrap.addEventListener('mouseup', onUp);
+wrap.addEventListener('touchcancel', onUp);
+wrap.addEventListener('mouseleave', onUp);
+
+// 全局阻止意外滚动（game 区域）
+document.addEventListener('touchmove', function(e) {
+  if (gameScr.style.display !== 'none' && dragIdx >= 0) e.preventDefault();
+}, { passive: false });
 
 function onDown(e) {
   if (!pieces.length) return;
-  const { x, y } = getEventPos(e);
-  dragIdx = hitTest(x, y);
-  if (dragIdx >= 0) {
-    e.preventDefault();
+  e.preventDefault(); // 彻底阻止浏览器手势
+  const pos = getEventPos(e);
+  const idx = hitTest(pos.x, pos.y);
+  if (idx >= 0) {
+    dragIdx = idx;
     const p = pieces[dragIdx];
-    dragOffX = x - p.x;
-    dragOffY = y - p.y;
-    // 如果已锁定，解锁并计数
-    // （不，锁定就是锁定了。只拖动未锁定的碎片）
+    dragOffX = pos.x - p.x;
+    dragOffY = pos.y - p.y;
     if (!timerId) startTimer();
     render();
   }
@@ -311,11 +354,10 @@ function onDown(e) {
 function onMove(e) {
   if (dragIdx < 0) return;
   e.preventDefault();
-  const { x, y } = getEventPos(e);
+  const pos = getEventPos(e);
   const p = pieces[dragIdx];
-  p.x = x - dragOffX;
-  p.y = y - dragOffY;
-  // 限制不超出画面
+  p.x = pos.x - dragOffX;
+  p.y = pos.y - dragOffY;
   p.x = Math.max(-cellSize * 0.6, Math.min(canvasW - cellSize * 0.4, p.x));
   p.y = Math.max(0, Math.min(canvasH - cellSize * 0.4, p.y));
   render();
@@ -324,9 +366,8 @@ function onMove(e) {
 function onUp(e) {
   if (dragIdx < 0) return;
   const p = pieces[dragIdx];
-  // 吸附检测
   const dx = p.x - p.tx, dy = p.y - p.ty;
-  const snapDist = cellSize * 0.28;
+  const snapDist = cellSize * 0.30;
   if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
     p.x = p.tx;
     p.y = p.ty;
@@ -334,9 +375,6 @@ function onUp(e) {
     moves++;
     movesEl.textContent = moves;
     checkWin();
-  } else if (p.locked) {
-    // 之前锁定但现在拖远了，不解锁（保持锁定状态）
-    // 把碎片放回原位置... 实际上 locked 的不该被拖
   }
   dragIdx = -1;
   render();
@@ -475,10 +513,6 @@ window.addEventListener('resize', () => {
   }, 250);
 });
 
-// ========== PWA 注册 ==========
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
 </script>
 </body>
 </html>
