@@ -265,6 +265,17 @@ function render() {
     const p = pieces[idx];
     if (!p.locked) drawPiece(p, tabR);
   }
+
+  // 调试：画红点标记触摸位置
+  if (debugTouch) {
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(debugTouch.x, debugTouch.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`(${Math.round(debugTouch.x)},${Math.round(debugTouch.y)}) drag:${dragIdx}`, debugTouch.x + 14, debugTouch.y + 4);
+  }
 }
 
 function drawPiece(p, tabR) {
@@ -308,6 +319,8 @@ function hitTest(mx, my) {
 }
 
 // ========== 指针事件（pointer events — 同时支持触摸和鼠标） ==========
+let debugTouch = null; // 调试用：记录最后触摸点
+
 function getEventPos(e) {
   const rect = canvas.getBoundingClientRect();
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -317,49 +330,52 @@ canvas.addEventListener('pointerdown', onDown);
 canvas.addEventListener('pointermove', onMove);
 canvas.addEventListener('pointerup', onUp);
 canvas.addEventListener('pointercancel', onUp);
-canvas.addEventListener('pointerleave', onUp);
+// 丢失捕获时也重置
+canvas.addEventListener('lostpointercapture', () => { dragIdx = -1; render(); });
 
 function onDown(e) {
-  if (!pieces.length) return;
+  debugTouch = getEventPos(e);
   canvas.setPointerCapture(e.pointerId);
-  const pos = getEventPos(e);
-  const idx = hitTest(pos.x, pos.y);
+  if (!pieces.length) { render(); return; }
+  const idx = hitTest(debugTouch.x, debugTouch.y);
   if (idx >= 0) {
     dragIdx = idx;
     const p = pieces[dragIdx];
-    dragOffX = pos.x - p.x;
-    dragOffY = pos.y - p.y;
+    dragOffX = debugTouch.x - p.x;
+    dragOffY = debugTouch.y - p.y;
     if (!timerId) startTimer();
-    render();
   }
+  render();
 }
 
 function onMove(e) {
-  if (dragIdx < 0) return;
+  debugTouch = getEventPos(e);
+  if (dragIdx < 0) { render(); return; }
   e.preventDefault();
-  const pos = getEventPos(e);
   const p = pieces[dragIdx];
-  p.x = pos.x - dragOffX;
-  p.y = pos.y - dragOffY;
+  p.x = debugTouch.x - dragOffX;
+  p.y = debugTouch.y - dragOffY;
   p.x = Math.max(-cellSize * 0.6, Math.min(canvasW - cellSize * 0.4, p.x));
   p.y = Math.max(0, Math.min(canvasH - cellSize * 0.4, p.y));
   render();
 }
 
 function onUp(e) {
-  if (dragIdx < 0) return;
-  canvas.releasePointerCapture(e.pointerId);
-  const p = pieces[dragIdx];
-  const dx = p.x - p.tx, dy = p.y - p.ty;
-  const snapDist = cellSize * 0.30;
-  if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
-    p.x = p.tx; p.y = p.ty;
-    p.locked = true;
-    moves++;
-    movesEl.textContent = moves;
-    checkWin();
+  debugTouch = getEventPos(e);
+  if (dragIdx >= 0) {
+    canvas.releasePointerCapture(e.pointerId);
+    const p = pieces[dragIdx];
+    const dx = p.x - p.tx, dy = p.y - p.ty;
+    const snapDist = cellSize * 0.30;
+    if (Math.abs(dx) < snapDist && Math.abs(dy) < snapDist) {
+      p.x = p.tx; p.y = p.ty;
+      p.locked = true;
+      moves++;
+      movesEl.textContent = moves;
+      checkWin();
+    }
+    dragIdx = -1;
   }
-  dragIdx = -1;
   render();
 }
 
