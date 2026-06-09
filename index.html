@@ -59,7 +59,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
 <body>
 
 <div id="start">
-  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v5</span></h1>
+  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v6</span></h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
@@ -89,7 +89,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
   <div id="bar">
     <span>⏱ <b id="timer">00:00</b></span>
     <span>👆 <b id="moves">0</b>步</span>
-    <span id="debug-info" style="font-size:.7em;color:#ff0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span id="debug-info" style="font-size:.65em;color:#ff0"></span>
     <button class="bar-btn" id="hint-btn">👁 原图</button>
     <button class="bar-btn" id="restart-btn">🔄 重新打乱</button>
     <button class="bar-btn" id="home-btn">🏠</button>
@@ -387,20 +387,20 @@ function renderCrop() {
   cropCtx.fillStyle = '#000';
   cropCtx.fillRect(0, 0, cw, ch);
 
-  // 缩放图片以适配屏幕
-  const scale = Math.min(cw / cropSize, ch / cropSize);
-  const iDrawW = rawImage.naturalWidth * scale;
-  const iDrawH = rawImage.naturalHeight * scale;
-  const iDrawX = (cw - iDrawW) / 2 - cropX * scale;
-  const iDrawY = (ch - iDrawH) / 2 - cropY * scale;
+  // 整张图缩放到适配屏幕
+  const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
+  const imgDrawW = rawImage.naturalWidth * imgScale;
+  const imgDrawH = rawImage.naturalHeight * imgScale;
+  const imgDrawX = (cw - imgDrawW) / 2;
+  const imgDrawY = (ch - imgDrawH) / 2;
 
-  cropCtx.drawImage(rawImage, iDrawX, iDrawY, iDrawW, iDrawH);
+  cropCtx.drawImage(rawImage, imgDrawX, imgDrawY, imgDrawW, imgDrawH);
 
-  // 裁剪框（高亮矩形）
-  const boxX = (cw - cropSize * scale) / 2;
-  const boxY = (ch - cropSize * scale) / 2;
-  const boxW = cropSize * scale;
-  const boxH = cropSize * scale;
+  // 裁剪框 = 图片位置 + crop 偏移 * 缩放
+  const boxX = imgDrawX + cropX * imgScale;
+  const boxY = imgDrawY + cropY * imgScale;
+  const boxW = cropSize * imgScale;
+  const boxH = cropSize * imgScale;
 
   // 半透明遮罩
   cropCtx.fillStyle = 'rgba(0,0,0,.55)';
@@ -414,18 +414,17 @@ function renderCrop() {
   cropCtx.lineWidth = 2.5;
   cropCtx.strokeRect(boxX, boxY, boxW, boxH);
   // 角标
-  const cl = 20;
+  const cl = 16;
   cropCtx.strokeStyle = '#C084FC';
-  cropCtx.lineWidth = 4;
+  cropCtx.lineWidth = 3;
   [{x:boxX,y:boxY},{x:boxX+boxW,y:boxY},{x:boxX,y:boxY+boxH},{x:boxX+boxW,y:boxY+boxH}].forEach(p => {
     cropCtx.beginPath();
     cropCtx.moveTo(p.x, p.y+cl); cropCtx.lineTo(p.x, p.y); cropCtx.lineTo(p.x+cl, p.y);
-    cropCtx.moveTo(p.x, p.y-cl); cropCtx.lineTo(p.x, p.y); cropCtx.lineTo(p.x+cl-2*p.x/p.x||0+cl, p.y);
     cropCtx.stroke();
   });
 }
 
-// 裁剪页拖拽
+// 裁剪页拖拽 — 用 imgScale 反算图片坐标
 cropCanvas.addEventListener('pointerdown', e => {
   cropDragging = true;
   cropDragStart = { x: e.clientX, y: e.clientY };
@@ -434,9 +433,11 @@ cropCanvas.addEventListener('pointerdown', e => {
 });
 cropCanvas.addEventListener('pointermove', e => {
   if (!cropDragging) return;
-  const scale = cropSize / Math.min(parseInt(cropCanvas.style.width), parseInt(cropCanvas.style.height));
-  const dx = (e.clientX - cropDragStart.x) * scale;
-  const dy = (e.clientY - cropDragStart.y) * scale;
+  const cw = parseInt(cropCanvas.style.width);
+  const ch = parseInt(cropCanvas.style.height);
+  const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
+  const dx = (e.clientX - cropDragStart.x) / imgScale;
+  const dy = (e.clientY - cropDragStart.y) / imgScale;
   cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cropDragOrig.x - dx));
   cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cropDragOrig.y - dy));
   renderCrop();
