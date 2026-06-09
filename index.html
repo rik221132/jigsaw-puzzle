@@ -276,6 +276,14 @@ function render() {
     ctx.textAlign = 'center';
     ctx.fillText('🎉', boardX+boardSize/2, boardY+boardSize/2+cellSize*0.15);
   }
+
+  // DEBUG: 图片信息
+  const iw = image ? image.naturalWidth : 0;
+  const ih = image ? image.naturalHeight : 0;
+  ctx.fillStyle = '#ff0';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`图:${iw}x${ih} 格:${gridN}x${gridN} 源格:${(iw/gridN)|0}px 板:${(boardSize)|0}px 格显:${(cellSize)|0}px`, 4, canvasH-6);
 }
 
 function roundRect(x, y, w, h, r) {
