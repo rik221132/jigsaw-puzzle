@@ -59,7 +59,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
 <body>
 
 <div id="start">
-  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v8</span></h1>
+  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v9</span></h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
@@ -432,27 +432,62 @@ function renderCrop() {
   });
 }
 
-// 裁剪页拖拽 — 用 imgScale 反算图片坐标
-cropCanvas.addEventListener('pointerdown', e => {
-  cropDragging = true;
-  cropDragStart = { x: e.clientX, y: e.clientY };
-  cropDragOrig = { x: cropX, y: cropY };
-  cropCanvas.setPointerCapture(e.pointerId);
-});
-cropCanvas.addEventListener('pointermove', e => {
-  if (!cropDragging) return;
-  const cw = parseInt(cropCanvas.style.width);
-  const ch = parseInt(cropCanvas.style.height);
-  const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
-  const dx = (e.clientX - cropDragStart.x) / imgScale;
-  const dy = (e.clientY - cropDragStart.y) / imgScale;
-  cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cropDragOrig.x - dx));
-  cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cropDragOrig.y - dy));
-  renderCrop();
-});
-cropCanvas.addEventListener('pointerup', e => {
-  cropDragging = false;
-  cropCanvas.releasePointerCapture(e.pointerId);
+// 裁剪页 — 单指拖拽 + 双指缩放
+let pinchStartDist = 0, pinchStartSize = 0, pinchMidX = 0, pinchMidY = 0;
+cropCanvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    cropDragging = true;
+    cropDragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    cropDragOrig = { x: cropX, y: cropY };
+  } else if (e.touches.length === 2) {
+    cropDragging = false;
+    pinchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    pinchStartSize = cropSize;
+    pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+  }
+}, { passive: false });
+cropCanvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 2 && pinchStartDist > 0) {
+    // 双指缩放
+    const newDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    const ratio = pinchStartDist / newDist;
+    const newSize = Math.round(pinchStartSize * ratio);
+    const minSize = 80;
+    const maxSize = Math.min(rawImage.naturalWidth, rawImage.naturalHeight);
+    const oldSize = cropSize;
+    cropSize = Math.max(minSize, Math.min(maxSize, newSize));
+    // 以双指中点为中心缩放
+    if (cropSize !== oldSize) {
+      const cw = parseInt(cropCanvas.style.width);
+      const ch = parseInt(cropCanvas.style.height);
+      const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
+      const cx = pinchMidX; const cy = pinchMidY;
+      const cpX = (cx - (cw - rawImage.naturalWidth * imgScale) / 2) / imgScale;
+      const cpY = (cy - (ch - rawImage.naturalHeight * imgScale) / 2) / imgScale;
+      cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cpX - cropSize / 2));
+      cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cpY - cropSize / 2));
+    }
+    renderCrop();
+  } else if (e.touches.length === 1 && cropDragging) {
+    // 单指拖拽
+    const cw = parseInt(cropCanvas.style.width);
+    const ch = parseInt(cropCanvas.style.height);
+    const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
+    const dx = (e.touches[0].clientX - cropDragStart.x) / imgScale;
+    const dy = (e.touches[0].clientY - cropDragStart.y) / imgScale;
+    cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cropDragOrig.x - dx));
+    cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cropDragOrig.y - dy));
+    renderCrop();
+  }
+}, { passive: false });
+cropCanvas.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    cropDragging = false;
+    pinchStartDist = 0;
+  }
 });
 
 $('#crop-confirm').addEventListener('click', () => {
