@@ -59,7 +59,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
 <body>
 
 <div id="start">
-  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v9</span></h1>
+  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v10</span></h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
@@ -72,6 +72,10 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
     <button class="diff-btn" data-n="6">6×6 困难</button>
   </div>
   <button id="start-btn" disabled>开始游戏</button>
+  <div id="install-hint" style="margin-top:8px;font-size:.78em;color:#888">
+    <span id="install-text">📲 Chrome菜单 → 添加到主屏幕</span>
+    <button id="install-manual-btn" style="display:none;background:#5B6ABF;color:#fff;border:none;padding:8px 20px;border-radius:20px;font-size:.9em;cursor:pointer">一键安装</button>
+  </div>
 </div>
 
 <!-- 裁剪页 -->
@@ -127,25 +131,31 @@ const installBar = $('#install-bar'), installBtn = $('#install-btn');
 
 // ========== PWA 安装 ==========
 let deferredPrompt = null;
+const installText = $('#install-text'), installManualBtn = $('#install-manual-btn');
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); deferredPrompt = e; installBar.style.display = 'flex';
+  e.preventDefault();
+  deferredPrompt = e;
+  installBar.style.display = 'flex';
+  installText.style.display = 'none';
+  installManualBtn.style.display = 'inline-block';
 });
 installBtn.addEventListener('click', async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
-  if ((await deferredPrompt.userChoice).outcome === 'accepted') installBar.style.display = 'none';
+  if ((await deferredPrompt.userChoice).outcome === 'accepted') { installBar.style.display = 'none'; installManualBtn.style.display = 'none'; }
+  deferredPrompt = null;
+});
+installManualBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  if ((await deferredPrompt.userChoice).outcome === 'accepted') { installBar.style.display = 'none'; installManualBtn.style.display = 'none'; }
   deferredPrompt = null;
 });
 $('#install-close').addEventListener('click', () => { installBar.style.display = 'none'; });
-window.addEventListener('appinstalled', () => { installBar.style.display = 'none'; });
+window.addEventListener('appinstalled', () => { installBar.style.display = 'none'; installText.textContent = '✅ 已添加到桌面'; });
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // 先干掉旧 SW，再注册新的
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => r.unregister());
-    }).then(() => {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
-    });
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
   });
 }
 
@@ -478,8 +488,8 @@ cropCanvas.addEventListener('touchmove', e => {
     const imgScale = Math.min(cw / rawImage.naturalWidth, ch / rawImage.naturalHeight);
     const dx = (e.touches[0].clientX - cropDragStart.x) / imgScale;
     const dy = (e.touches[0].clientY - cropDragStart.y) / imgScale;
-    cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cropDragOrig.x - dx));
-    cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cropDragOrig.y - dy));
+    cropX = Math.max(0, Math.min(rawImage.naturalWidth - cropSize, cropDragOrig.x + dx));
+    cropY = Math.max(0, Math.min(rawImage.naturalHeight - cropSize, cropDragOrig.y + dy));
     renderCrop();
   }
 }, { passive: false });
