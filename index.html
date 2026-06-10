@@ -59,7 +59,7 @@ canvas{display:block;touch-action:manipulation;border-radius:8px}
 <body>
 
 <div id="start">
-  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v11</span></h1>
+  <h1>🧩 滑动拼图 <span style="font-size:.3em;color:#888">v12</span></h1>
   <div id="upload-wrap">
     <div id="upload-btn">📷 选择照片</div>
     <input type="file" accept="image/*" id="file-input">
@@ -256,26 +256,26 @@ function render() {
   ctx.lineWidth = 2;
   roundRect(boardX-pad, boardY-pad, boardSize+pad*2, boardSize+pad*2, 10);
 
-  // 画每个碎片
+  // 画每个碎片（无缝拼接，无圆角，无间隙）
   for (const p of pieces) {
     const x = boardX + p.curC * cellSize;
     const y = boardY + p.curR * cellSize;
-    const gap = 2;
-    ctx.save();
-    // 圆角裁剪
-    const clip = new Path2D();
-    roundRectPath(clip, x+gap, y+gap, cellSize-gap*2, cellSize-gap*2, 6);
-    ctx.clip(clip);
-    // 画图片 — 源坐标用图片自身尺寸，不是 canvas 坐标！
     const srcCell = image.naturalWidth / gridN;
     const sx = p.correctC * srcCell;
     const sy = p.correctR * srcCell;
-    ctx.drawImage(image, sx, sy, srcCell, srcCell, x+gap, y+gap, cellSize-gap*2, cellSize-gap*2);
-    ctx.restore();
-    // 边框
-    ctx.strokeStyle = 'rgba(255,255,255,.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke(clip);
+    ctx.drawImage(image, sx, sy, srcCell, srcCell, x, y, cellSize, cellSize);
+  }
+
+  // 碎片之间的细线（仅视觉分隔，不砍图片）
+  ctx.strokeStyle = 'rgba(0,0,0,.15)';
+  ctx.lineWidth = 0.5;
+  for (let r = 1; r < gridN; r++) {
+    const y = boardY + r * cellSize;
+    ctx.beginPath(); ctx.moveTo(boardX, y); ctx.lineTo(boardX + boardSize, y); ctx.stroke();
+  }
+  for (let c = 1; c < gridN; c++) {
+    const x = boardX + c * cellSize;
+    ctx.beginPath(); ctx.moveTo(x, boardY); ctx.lineTo(x, boardY + boardSize); ctx.stroke();
   }
 
   // 空位标记（虚线框）
@@ -312,15 +312,6 @@ function roundRect(x, y, w, h, r) {
   ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
   ctx.closePath();
   ctx.fill(); ctx.stroke();
-}
-
-function roundRectPath(p, x, y, w, h, r) {
-  p.moveTo(x+r, y); p.lineTo(x+w-r, y);
-  p.arcTo(x+w, y, x+w, y+r, r);
-  p.lineTo(x+w, y+h-r); p.arcTo(x+w, y+h, x+w-r, y+h, r);
-  p.lineTo(x+r, y+h); p.arcTo(x, y+h, x, y+h-r, r);
-  p.lineTo(x, y+r); p.arcTo(x, y, x+r, y, r);
-  p.closePath();
 }
 
 // ========== 触摸 / 点击 ==========
